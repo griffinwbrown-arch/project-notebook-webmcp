@@ -109,10 +109,13 @@ const BATCH_DEFINITIONS = [
   {
     id: "desk",
     label: "Desk entry components",
-    roots: ["src/entries/desk"],
+    roots: ["src/anatomy", "src/entries/desk", "src/learning"],
     testFiles: [
+      "tests/unit/anatomy/*.test.ts",
+      "tests/unit/anatomy/*.test.tsx",
       "tests/unit/entries/desk/*.test.ts",
       "tests/unit/entries/desk/*.test.tsx",
+      "tests/unit/learning/*.test.ts",
       "tests/unit/phase11/ui-components.test.tsx",
       "tests/unit/phase11/ui-integration.test.tsx",
     ],
@@ -120,8 +123,9 @@ const BATCH_DEFINITIONS = [
   {
     id: "integrations",
     label: "WebMCP, runtime, and offline shell",
-    roots: ["src/entries/webmcp", "src/pwa", "src/runtime", "public/sw.js"],
+    roots: ["src/demo", "src/entries/webmcp", "src/pwa", "src/runtime", "public/sw.js"],
     testFiles: [
+      "tests/unit/demo/*.test.ts",
       "tests/unit/integrations/*.test.ts",
       "tests/unit/pwa/*.test.ts",
       "tests/unit/workspace/browser-runtime*.test.ts",
