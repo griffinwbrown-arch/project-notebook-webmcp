@@ -1,0 +1,28 @@
+name: Work item
+description: Plan a focused product, engineering, or maintenance change.
+title: ""
+labels: []
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Intended outcome
+      description: Describe the user or project result this work should produce.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and constraints
+      description: State what is included, excluded, or constrained.
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of done
+      description: List the evidence and checks needed to close this item.
+    validations:
+      required: true

@@ -1,0 +1,87 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+/.audit/**
+!/.audit/phase-7/
+!/.audit/phase-7/evidence-index.md
+!/.audit/phase-8/
+!/.audit/phase-8/evidence-index.md
+!/.audit/phase-9/
+!/.audit/phase-9/evidence-index.md
+!/.audit/phase-10/
+!/.audit/phase-10/evidence-index.md
+!/.audit/phase-10/next-phase-handoff.md
+!/.audit/phase-11/
+!/.audit/phase-11/evidence-index.md
+!/.audit/phase-11/next-phase-handoff.md
+/artifacts
+/.artifacts/
+/.sites-tmp/
+/.tmp-wrangler/
+/.tmp-wrangler-config/
+/.stryker-tmp
+/.stryker-workspace-tmp
+/.stryker-phase3-tmp
+/.stryker-current-tmp
+/tmp
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+*.log
+/.vinext/
+/dist/
+/.wrangler/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local QA and publication artifacts
+/desktop-real-app-demo.png
+/mobile-real-app-demo.png
+/tool-contract.json
+/docs/webmcp-challenge-prep/08-devpost-working-copy.md
+/docs/webmcp-challenge-prep/assets/
+/docs/webmcp-challenge-prep/devpost-project-story-preview.html
+/docs/webmcp-challenge-prep/devpost-project-story.md
+/public/assets/coloring/child-forest-comparison/
+/public/assets/coloring/child-forest-reference.png
+/public/assets/coloring/child-forest-trace-grid.png
+/public/assets/coloring/child-forest-trace-reference.png
+/public/assets/coloring/child-forest-trace-render.png
+/public/assets/coloring/night-garden-*
+.pnpm-debug.log*
+
+# local workflow state
+/.devpost-hackathon-state.json
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts

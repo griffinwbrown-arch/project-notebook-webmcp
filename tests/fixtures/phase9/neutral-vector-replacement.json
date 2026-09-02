@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "label": "Compass figure",
+  "description": "A generic bounded compass figure used to verify typed vector replacement.",
+  "frame": {
+    "x": 120,
+    "y": 300,
+    "width": 240,
+    "height": 180
+  },
+  "beforeProvenance": {
+    "kind": "generated-visible-ink",
+    "sourceLabel": "neutral compass revision one",
+    "sourceFormat": "typed-vector-document",
+    "tool": "phase-nine-fixture",
+    "toolVersion": "1"
+  },
+  "afterProvenance": {
+    "kind": "generated-visible-ink",
+    "sourceLabel": "neutral compass revision two",
+    "sourceFormat": "typed-vector-document",
+    "tool": "phase-nine-fixture",
+    "toolVersion": "1"
+  },
+  "before": {
+    "version": 1,
+    "viewBox": {
+      "width": 100,
+      "height": 100
+    },
+    "paths": [
+      {
+        "commands": [
+          { "kind": "move", "x": 50, "y": 8 },
+          { "kind": "line", "x": 92, "y": 50 },
+          { "kind": "line", "x": 50, "y": 92 },
+          { "kind": "line", "x": 8, "y": 50 },
+          { "kind": "close" }
+        ],
+        "paint": {
+          "stroke": "ink",
+          "strokeWidth": 2,
+          "fill": null,
+          "linecap": "round",
+          "linejoin": "round"
+        }
+      },
+      {
+        "commands": [
+          { "kind": "move", "x": 26, "y": 50 },
+          { "kind": "line", "x": 74, "y": 50 }
+        ],
+        "paint": {
+          "stroke": "blue",
+          "strokeWidth": 2,
+          "fill": null,
+          "linecap": "round",
+          "linejoin": "round"
+        }
+      }
+    ]
+  },
+  "after": {
+    "version": 1,
+    "viewBox": {
+      "width": 100,
+      "height": 100
+    },
+    "paths": [
+      {
+        "commands": [
+          { "kind": "move", "x": 50, "y": 8 },
+          { "kind": "cubic", "x1": 73, "y1": 8, "x2": 92, "y2": 27, "x": 92, "y": 50 },
+          { "kind": "cubic", "x1": 92, "y1": 73, "x2": 73, "y2": 92, "x": 50, "y": 92 },
+          { "kind": "cubic", "x1": 27, "y1": 92, "x2": 8, "y2": 73, "x": 8, "y": 50 },
+          { "kind": "cubic", "x1": 8, "y1": 27, "x2": 27, "y2": 8, "x": 50, "y": 8 },
+          { "kind": "close" }
+        ],
+        "paint": {
+          "stroke": "ink",
+          "strokeWidth": 2,
+          "fill": null,
+          "linecap": "round",
+          "linejoin": "round"
+        }
+      },
+      {
+        "commands": [
+          { "kind": "move", "x": 50, "y": 18 },
+          { "kind": "line", "x": 62, "y": 50 },
+          { "kind": "line", "x": 50, "y": 82 },
+          { "kind": "line", "x": 38, "y": 50 },
+          { "kind": "close" }
+        ],
+        "paint": {
+          "stroke": "blue",
+          "strokeWidth": 2,
+          "fill": "blue",
+          "linecap": "round",
+          "linejoin": "round"
+        }
+      }
+    ]
+  }
+}
