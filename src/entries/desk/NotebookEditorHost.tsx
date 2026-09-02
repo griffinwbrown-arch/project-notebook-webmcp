@@ -135,7 +135,7 @@ function AgentNotebookViewer({ notebook, registry, state, onAction, agentSession
     onAction({ type: "scale-selected", scale });
   };
 
-  const notebookTransform = (offset: Readonly<{ x: number; y: number }>, scale = cameraScaleRef.current): string =>
+  const notebookTransform = (offset: Readonly<{ x: number; y: number }>, scale: number): string =>
     `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${scale})`;
 
   const resetView = useCallback((): void => {
@@ -273,7 +273,7 @@ function AgentNotebookViewer({ notebook, registry, state, onAction, agentSession
           };
           panOffsetRef.current = nextOffset;
           if (openNotebookRef.current !== null) {
-            openNotebookRef.current.style.transform = notebookTransform(nextOffset);
+            openNotebookRef.current.style.transform = notebookTransform(nextOffset, cameraScaleRef.current);
           }
         }}
         onPointerUpCapture={(event) => {

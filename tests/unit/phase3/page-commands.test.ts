@@ -225,12 +225,11 @@ describe("Phase 3 canonical page command registry", () => {
       const annotation = page.elements.find((element) => element.kind === "annotation")!;
       if (annotation.kind !== "annotation" || annotation.anchor.kind !== "text-range") throw new Error("Expected a text-range annotation.");
       const targetRect = textRangeRects(layoutPage(page), annotation.anchor)[0]!;
-      expect(circle?.frame).toEqual({
-        x: targetRect.x - 8,
-        y: targetRect.y - 8,
-        width: targetRect.width + 16,
-        height: targetRect.height + 16,
-      });
+      if (circle?.frame === undefined) throw new Error("Expected a rendered annotation frame.");
+      expect(circle.frame.x).toBeCloseTo(targetRect.x - 8, 8);
+      expect(circle.frame.y).toBeCloseTo(targetRect.y - 8, 8);
+      expect(circle.frame.width).toBeCloseTo(targetRect.width + 16, 8);
+      expect(circle.frame.height).toBeCloseTo(targetRect.height + 16, 8);
     }
     await store.close();
   });
