@@ -166,7 +166,7 @@ async function verifyEveryStudyMapping(page: Page): Promise<readonly Readonly<{
     };
     const results = [];
     for (const bone of bones) {
-      unwrap(await window.__anatomyAcceptance.invoke("anatomy_bone_focus", { boneId: bone.id }));
+      unwrap(await window.__anatomyAcceptance.invoke("anatomy_navigate", { action: "focus", boneId: bone.id }));
       let selected: Record<string, unknown> | null = null;
       for (let attempt = 0; attempt < 30; attempt += 1) {
         await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -282,7 +282,7 @@ test("@desktop creates seven anatomy pages and proves source-mesh study, test, c
   const root = page.locator('.anatomy-study-card[data-atlas-state="ready"]');
   await expect(root).toHaveAttribute("data-logical-bones", String(EXPECTED_LOGICAL_BONES));
   await expect(root).toHaveAttribute("data-semantic-meshes", String(EXPECTED_SEMANTIC_MESHES));
-  await expect(root.locator(".anatomy-study-footer")).toContainText("206 identities · 208 source meshes verified · 7 agent controls");
+  await expect(root.locator(".anatomy-study-footer")).toContainText("206 identities · 208 source meshes verified · 3 agent controls");
   const atlasCanvas = root.locator(".anatomy-model-canvas canvas");
   await expect(atlasCanvas, "The validated atlas must explicitly report upright normalization.")
     .toHaveAttribute("data-atlas-upright", "true");
@@ -372,7 +372,7 @@ test("@desktop creates seven anatomy pages and proves source-mesh study, test, c
   expect(glbMappingMismatches, "Independent GLB parsing must match all 206 catalog identities and 208 mesh parts.").toEqual([]);
   const anatomyToolNames = (await page.evaluate(() => window.__anatomyAcceptance.names()))
     .filter((name) => name.startsWith("anatomy_"));
-  expect(anatomyToolNames, "The notebook component must publish only its seven bounded anatomy tools.")
+  expect(anatomyToolNames, "The notebook component must publish only its three bounded anatomy tools.")
     .toEqual([...EXPECTED_ANATOMY_TOOLS]);
   const descriptors = await page.evaluate(() => window.__anatomyAcceptance.descriptors());
   for (const toolName of EXPECTED_ANATOMY_TOOLS) {
@@ -418,7 +418,7 @@ test("@desktop creates seven anatomy pages and proves source-mesh study, test, c
 
   const visibleCatalogLabels = [];
   for (const anatomySection of ANATOMY_SECTIONS) {
-    await executeTool(page, "anatomy_section_set", { section: anatomySection.id });
+    await executeTool(page, "anatomy_navigate", { action: "set_view", section: anatomySection.id });
     const expectedBones = bonesForSection(anatomySection.id);
     const options = root.locator('.anatomy-bone-list [role="option"]');
     await expect(options).toHaveCount(expectedBones.length);
@@ -438,8 +438,8 @@ test("@desktop creates seven anatomy pages and proves source-mesh study, test, c
   ] as const;
   const sectionRaycasts = [];
   for (const representative of raycastRepresentatives) {
-    await executeTool(page, "anatomy_section_set", { section: representative.section });
-    await executeTool(page, "anatomy_bone_focus", { boneId: representative.boneId, isolate: true });
+    await executeTool(page, "anatomy_navigate", { action: "set_view", section: representative.section });
+    await executeTool(page, "anatomy_navigate", { action: "focus", boneId: representative.boneId, isolate: true });
     await waitForSelectedBone(page, representative.boneId);
     await waitForCameraSettled(page);
     const isolatedMapping = await anatomyContext(page);
@@ -451,7 +451,7 @@ test("@desktop creates seven anatomy pages and proves source-mesh study, test, c
     await page.mouse.click(point.x, point.y);
     await waitForSelectedBone(page, representative.boneId);
     sectionRaycasts.push({ ...representative, point });
-    await executeTool(page, "anatomy_bone_focus", { boneId: representative.boneId, isolate: false });
+    await executeTool(page, "anatomy_navigate", { action: "focus", boneId: representative.boneId, isolate: false });
   }
   await waitForCameraSettled(page);
   const raycastPoint = await findProjectedMeshPoint(page, "left-patella");
@@ -494,7 +494,7 @@ test("@desktop creates seven anatomy pages and proves source-mesh study, test, c
   expect(requiredNumber(restoredContext, "visibleSemanticMeshCount"),
     "Show all must restore every verified source mesh.").toBe(EXPECTED_SEMANTIC_MESHES);
   const cameraBeforeLeft = fieldRecord(restoredContext, "camera");
-  await executeTool(page, "anatomy_camera_set", { view: "left" });
+  await executeTool(page, "anatomy_navigate", { action: "set_view", camera: "left" });
   await expect(cameraControls.getByRole("button", { name: "Left" })).toHaveAttribute("aria-pressed", "true");
   const leftCamera = fieldRecord(await anatomyContext(page), "camera");
   expect(leftCamera.view).toBe("left");
@@ -505,13 +505,13 @@ test("@desktop creates seven anatomy pages and proves source-mesh study, test, c
   expect(anteriorCamera.view).toBe("anterior");
   expect(anteriorCamera.position).not.toEqual(leftCamera.position);
 
-  await executeTool(page, "anatomy_section_set", { section: "pelvis" });
-  const modeResult = await executeTool(page, "anatomy_mode_set", { mode: "test" });
+  await executeTool(page, "anatomy_navigate", { action: "set_view", section: "pelvis" });
+  const modeResult = await executeTool(page, "anatomy_navigate", { action: "set_view", mode: "test" });
   await expect(root).toHaveAttribute("data-anatomy-mode", "test");
   const testInputs = root.getByRole("textbox", { name: /Answer for question/ });
   await expect(testInputs).toHaveCount(2);
   const rejectedIdentity = await page.evaluate(() =>
-    window.__anatomyAcceptance.invoke("anatomy_bone_focus", { boneId: "left-hip-bone" }),
+    window.__anatomyAcceptance.invoke("anatomy_navigate", { action: "focus", boneId: "left-hip-bone" }),
   );
   expect(isRecord(rejectedIdentity) ? rejectedIdentity.outcome : null).toBe("error");
   const hiddenContext = await anatomyContext(page);
@@ -534,10 +534,10 @@ test("@desktop creates seven anatomy pages and proves source-mesh study, test, c
   const answers = PELVIS.map((bone, index) => ({ questionNumber: index + 1, answer: bone.name }));
   const answerResults = [];
   for (const answer of answers) {
-    answerResults.push(await executeTool(page, "anatomy_answer_set", answer));
+    answerResults.push(await executeTool(page, "anatomy_test", { action: "answer", ...answer }));
   }
   expect(secretMatches(answerResults), "Answer acknowledgements must not echo hidden answers.").toEqual([]);
-  const score = await executeTool(page, "anatomy_test_submit", {});
+  const score = await executeTool(page, "anatomy_test", { action: "submit" });
   const scoreRecord = fieldRecord(score, "score");
   expect(requiredNumber(scoreRecord, "correct")).toBe(2);
   expect(requiredNumber(scoreRecord, "total")).toBe(2);
@@ -550,7 +550,7 @@ test("@desktop creates seven anatomy pages and proves source-mesh study, test, c
   expect(await testInputs.evaluateAll((inputs) => inputs.map((input) => input instanceof HTMLInputElement ? input.value : null)))
     .toEqual(["", ""]);
   await testInputs.nth(0).fill(PELVIS[0]?.name ?? "");
-  await executeTool(page, "anatomy_answer_set", { questionNumber: 2, answer: PELVIS[1]?.name ?? "" });
+  await executeTool(page, "anatomy_test", { action: "answer", questionNumber: 2, answer: PELVIS[1]?.name ?? "" });
   await root.getByRole("button", { name: "Submit score" }).click();
   await expect(root.locator(".anatomy-score-pill")).toContainText("2/2");
 
@@ -757,8 +757,8 @@ test("@mobile keeps the atlas and opaque test controls usable at 390 by 844", as
   await createAtlasNotebook(page, "Anatomy mobile acceptance");
   await waitForAtlasReady(page);
   await waitForTools(page, EXPECTED_ANATOMY_TOOLS);
-  await executeTool(page, "anatomy_section_set", { section: "pelvis" });
-  await executeTool(page, "anatomy_mode_set", { mode: "test" });
+  await executeTool(page, "anatomy_navigate", { action: "set_view", section: "pelvis" });
+  await executeTool(page, "anatomy_navigate", { action: "set_view", mode: "test" });
 
   const root = page.locator('.anatomy-study-card[data-atlas-state="ready"]');
   await root.scrollIntoViewIfNeeded();

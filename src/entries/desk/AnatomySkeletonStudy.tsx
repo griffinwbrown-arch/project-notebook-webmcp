@@ -54,14 +54,9 @@ type TestAttempt =
     }>;
 
 const ANATOMY_TOOL_NAMES = [
-  "anatomy_answer_set",
-  "anatomy_bone_focus",
-  "anatomy_camera_set",
   "anatomy_context_read",
-  "anatomy_mode_set",
-  "anatomy_section_set",
-  "anatomy_session_set",
-  "anatomy_test_submit",
+  "anatomy_navigate",
+  "anatomy_test",
 ] as const;
 
 type AnatomyToolName = typeof ANATOMY_TOOL_NAMES[number];
@@ -104,50 +99,11 @@ const EMPTY_OBJECT_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+const SECTION_SCHEMA = {
+  oneOf: ANATOMY_SECTIONS.map(({ id, shortLabel }) => ({ const: id, title: shortLabel })),
+} as const;
+
 const TOOL_DESCRIPTORS = [
-  {
-    name: "anatomy_answer_set",
-    description: "Set one answer by opaque question number in the active anatomy test. The acknowledgement never echoes the answer.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        questionNumber: { type: "integer", minimum: 1, maximum: 64 },
-        answer: { type: "string", maxLength: 160 },
-      },
-      required: ["questionNumber", "answer"],
-      additionalProperties: false,
-    },
-    readOnly: false,
-    untrustedContent: true,
-  },
-  {
-    name: "anatomy_bone_focus",
-    description: "Focus a verified source-mesh bone in Study mode, or an opaque question number while test answers are hidden. Isolation is optional.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        boneId: { type: "string", minLength: 1 },
-        questionNumber: { type: "integer", minimum: 1, maximum: 64 },
-        isolate: { type: "boolean" },
-      },
-      oneOf: [{ required: ["boneId"] }, { required: ["questionNumber"] }],
-      additionalProperties: false,
-    },
-    readOnly: false,
-    untrustedContent: false,
-  },
-  {
-    name: "anatomy_camera_set",
-    description: "Move the atlas camera to the anterior, left, or right anatomical view.",
-    inputSchema: {
-      type: "object",
-      properties: { view: { type: "string", enum: ["anterior", "left", "right"] } },
-      required: ["view"],
-      additionalProperties: false,
-    },
-    readOnly: false,
-    untrustedContent: false,
-  },
   {
     name: "anatomy_context_read",
     description: "Read atlas integrity, camera, section, and progress. An unfinished test returns opaque question numbers and completion flags only.",
@@ -156,54 +112,62 @@ const TOOL_DESCRIPTORS = [
     untrustedContent: true,
   },
   {
-    name: "anatomy_mode_set",
-    description: "Open Study mode or the fillable, scored Test mode.",
+    name: "anatomy_navigate",
+    description: "Navigate the atlas in one call. Use action \"set_view\" to change any of mode (study/test), section, and camera together; use action \"focus\" to focus a verified source-mesh bone in Study mode, or an opaque question number while test answers are hidden. Isolation is optional. Section schema titles match the labels on the page.",
     inputSchema: {
-      type: "object",
-      properties: { mode: { type: "string", enum: ["study", "test"] } },
-      required: ["mode"],
-      additionalProperties: false,
-    },
-    readOnly: false,
-    untrustedContent: false,
-  },
-  {
-    name: "anatomy_section_set",
-    description: "Open one visible skeletal section and select its first verified bone or question. The schema titles match the labels on the page.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        section: {
-          oneOf: ANATOMY_SECTIONS.map(({ id, shortLabel }) => ({ const: id, title: shortLabel })),
+      oneOf: [
+        {
+          type: "object",
+          properties: {
+            action: { const: "set_view" },
+            mode: { type: "string", enum: ["study", "test"] },
+            section: SECTION_SCHEMA,
+            camera: { type: "string", enum: ["anterior", "left", "right"] },
+          },
+          required: ["action"],
+          anyOf: [{ required: ["mode"] }, { required: ["section"] }, { required: ["camera"] }],
+          additionalProperties: false,
         },
-      },
-      required: ["section"],
-      additionalProperties: false,
-    },
-    readOnly: false,
-    untrustedContent: false,
-  },
-  {
-    name: "anatomy_session_set",
-    description: "Set the visible anatomy section and mode together in one direct action. The section schema titles match the labels on the page.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        mode: { type: "string", enum: ["study", "test"] },
-        section: {
-          oneOf: ANATOMY_SECTIONS.map(({ id, shortLabel }) => ({ const: id, title: shortLabel })),
+        {
+          type: "object",
+          properties: {
+            action: { const: "focus" },
+            boneId: { type: "string", minLength: 1 },
+            questionNumber: { type: "integer", minimum: 1, maximum: 64 },
+            isolate: { type: "boolean" },
+          },
+          required: ["action"],
+          oneOf: [{ required: ["boneId"] }, { required: ["questionNumber"] }],
+          additionalProperties: false,
         },
-      },
-      required: ["mode", "section"],
-      additionalProperties: false,
+      ],
     },
     readOnly: false,
     untrustedContent: false,
   },
   {
-    name: "anatomy_test_submit",
-    description: "Submit the active section test through the notebook's app-owned scoring and persistence path.",
-    inputSchema: EMPTY_OBJECT_SCHEMA,
+    name: "anatomy_test",
+    description: "Interact with the fillable, scored anatomy test. Use action \"answer\" to set one answer by opaque question number (the acknowledgement never echoes the answer); use action \"submit\" to score and persist the active section test through the notebook's app-owned path.",
+    inputSchema: {
+      oneOf: [
+        {
+          type: "object",
+          properties: {
+            action: { const: "answer" },
+            questionNumber: { type: "integer", minimum: 1, maximum: 64 },
+            answer: { type: "string", maxLength: 160 },
+          },
+          required: ["action", "questionNumber", "answer"],
+          additionalProperties: false,
+        },
+        {
+          type: "object",
+          properties: { action: { const: "submit" } },
+          required: ["action"],
+          additionalProperties: false,
+        },
+      ],
+    },
     readOnly: false,
     untrustedContent: true,
   },
@@ -265,43 +229,58 @@ function executeAnatomyTool(
     if (!isRecord(input) || !hasExactKeys(input, [], [])) return invalidToolInput(command);
     return actions.context();
   }
-  if (command === "anatomy_mode_set") {
-    if (!isRecord(input) || !hasExactKeys(input, ["mode"], ["mode"]) || !isStudyMode(input.mode)) return invalidToolInput(command);
-    return actions.setMode(input.mode);
-  }
-  if (command === "anatomy_section_set") {
-    if (!isRecord(input) || !hasExactKeys(input, ["section"], ["section"]) || !isAnatomySection(input.section)) return invalidToolInput(command);
-    return actions.setSection(input.section);
-  }
-  if (command === "anatomy_session_set") {
-    if (!isRecord(input) || !hasExactKeys(input, ["mode", "section"], ["mode", "section"]) ||
-      !isStudyMode(input.mode) || !isAnatomySection(input.section)) return invalidToolInput(command);
-    return actions.setSession({ mode: input.mode, section: input.section });
-  }
-  if (command === "anatomy_camera_set") {
-    if (!isRecord(input) || !hasExactKeys(input, ["view"], ["view"]) || !isCameraPreset(input.view)) return invalidToolInput(command);
-    return { camera: actions.setCamera(input.view) };
-  }
-  if (command === "anatomy_bone_focus") {
+
+  if (command === "anatomy_navigate") {
     if (!isRecord(input)) return invalidToolInput(command);
-    if (actions.context().mode === "test") {
-      if (!hasExactKeys(input, ["questionNumber", "isolate"], ["questionNumber"]) ||
-        !Number.isInteger(input.questionNumber) || !isOptionalBoolean(input.isolate)) return invalidToolInput(command);
-      return actions.focusTestQuestion(Number(input.questionNumber), input.isolate) ?? invalidToolInput(command);
+    if (input.action === "set_view") {
+      if (!hasExactKeys(input, ["action", "mode", "section", "camera"], ["action"])) return invalidToolInput(command);
+      const modeGiven = input.mode !== undefined;
+      const sectionGiven = input.section !== undefined;
+      const cameraGiven = input.camera !== undefined;
+      if (!modeGiven && !sectionGiven && !cameraGiven) return invalidToolInput(command);
+      if (modeGiven && !isStudyMode(input.mode)) return invalidToolInput(command);
+      if (sectionGiven && !isAnatomySection(input.section)) return invalidToolInput(command);
+      if (cameraGiven && !isCameraPreset(input.camera)) return invalidToolInput(command);
+      let result: Readonly<Record<string, unknown>> = {};
+      if (modeGiven && isStudyMode(input.mode) && sectionGiven && isAnatomySection(input.section)) {
+        result = actions.setSession({ mode: input.mode, section: input.section });
+      } else if (modeGiven && isStudyMode(input.mode)) {
+        result = actions.setMode(input.mode);
+      } else if (sectionGiven && isAnatomySection(input.section)) {
+        result = actions.setSection(input.section);
+      }
+      if (cameraGiven && isCameraPreset(input.camera)) {
+        result = { ...result, camera: actions.setCamera(input.camera) };
+      }
+      return result;
     }
-    if (!hasExactKeys(input, ["boneId", "isolate"], ["boneId"]) || typeof input.boneId !== "string" ||
-      input.boneId.length === 0 || !isOptionalBoolean(input.isolate)) return invalidToolInput(command);
-    return actions.focusStudyBone(input.boneId, input.isolate) ?? toolFailure(command, "BONE_NOT_FOUND", "No verified bone matches that identifier.");
+    if (input.action === "focus") {
+      if (actions.context().mode === "test") {
+        if (!hasExactKeys(input, ["action", "questionNumber", "isolate"], ["action", "questionNumber"]) ||
+          !Number.isInteger(input.questionNumber) || !isOptionalBoolean(input.isolate)) return invalidToolInput(command);
+        return actions.focusTestQuestion(Number(input.questionNumber), input.isolate) ?? invalidToolInput(command);
+      }
+      if (!hasExactKeys(input, ["action", "boneId", "isolate"], ["action", "boneId"]) || typeof input.boneId !== "string" ||
+        input.boneId.length === 0 || !isOptionalBoolean(input.isolate)) return invalidToolInput(command);
+      return actions.focusStudyBone(input.boneId, input.isolate) ?? toolFailure(command, "BONE_NOT_FOUND", "No verified bone matches that identifier.");
+    }
+    return invalidToolInput(command);
   }
-  if (command === "anatomy_answer_set") {
-    if (!isRecord(input) || !hasExactKeys(input, ["questionNumber", "answer"], ["questionNumber", "answer"]) ||
+
+  // anatomy_test
+  if (!isRecord(input)) return invalidToolInput(command);
+  if (input.action === "answer") {
+    if (!hasExactKeys(input, ["action", "questionNumber", "answer"], ["action", "questionNumber", "answer"]) ||
       !Number.isInteger(input.questionNumber) || typeof input.answer !== "string" || input.answer.length > 160) return invalidToolInput(command);
     return actions.setAnswer(Number(input.questionNumber), input.answer) ?? invalidToolInput(command);
   }
-  if (!isRecord(input) || !hasExactKeys(input, [], [])) return invalidToolInput(command);
-  return actions.submitTest().then((score) => score === null
-    ? toolFailure(command, "TEST_SUBMIT_FAILED", "The score was not saved. Keep this attempt open and try again.")
-    : { score });
+  if (input.action === "submit") {
+    if (!hasExactKeys(input, ["action"], ["action"])) return invalidToolInput(command);
+    return actions.submitTest().then((score) => score === null
+      ? toolFailure(command, "TEST_SUBMIT_FAILED", "The score was not saved. Keep this attempt open and try again.")
+      : { score });
+  }
+  return invalidToolInput(command);
 }
 
 async function bindAnatomyTools(modelContext: WebMcpModelContext, controller: AnatomyController): Promise<void> {

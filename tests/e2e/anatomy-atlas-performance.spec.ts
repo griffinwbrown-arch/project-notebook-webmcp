@@ -143,7 +143,7 @@ async function interactionFrameIntervals(page: Page): Promise<Readonly<{
 
   const views = ["left", "right", "anterior"] as const;
   for (let index = 0; index < 20; index += 1) {
-    await page.evaluate((view) => window.__anatomyAcceptance.invoke("anatomy_camera_set", { view }), views[index % views.length]);
+    await page.evaluate((view) => window.__anatomyAcceptance.invoke("anatomy_navigate", { action: "set_view", camera: view }), views[index % views.length]);
     await page.waitForTimeout(150);
   }
   const samples = await samplesPromise;
@@ -361,7 +361,7 @@ test("@desktop holds frame, toggle, idle, score, cache, and away-state budgets",
   expect(interactionLongTasks.filter((duration) => duration >= 50), "Camera interaction must create no 50 ms long tasks.").toEqual([]);
 
   await page.evaluate(() => window.__anatomyAcceptance.resetLongTasks());
-  await toolPayload(await page.evaluate(() => window.__anatomyAcceptance.invoke("anatomy_section_set", { section: "upper-limb" })));
+  await toolPayload(await page.evaluate(() => window.__anatomyAcceptance.invoke("anatomy_navigate", { action: "set_view", section: "upper-limb" })));
   for (let warmup = 0; warmup < 2; warmup += 1) {
     await measureModeToggle(page, "Test", 64);
     await measureModeToggle(page, "Study", 0);
@@ -381,20 +381,20 @@ test("@desktop holds frame, toggle, idle, score, cache, and away-state budgets",
   const toggleLongTasks = await page.evaluate(() => window.__anatomyAcceptance.longTasks());
   expect(toggleLongTasks.filter((duration) => duration >= 50), "Study and Test toggles must create no 50 ms long tasks.").toEqual([]);
 
-  toolPayload(await page.evaluate(() => window.__anatomyAcceptance.invoke("anatomy_section_set", { section: "pelvis" })));
-  toolPayload(await page.evaluate(() => window.__anatomyAcceptance.invoke("anatomy_mode_set", { mode: "test" })));
+  toolPayload(await page.evaluate(() => window.__anatomyAcceptance.invoke("anatomy_navigate", { action: "set_view", section: "pelvis" })));
+  toolPayload(await page.evaluate(() => window.__anatomyAcceptance.invoke("anatomy_navigate", { action: "set_view", mode: "test" })));
   const pelvis = bonesForSection("pelvis");
   for (let index = 0; index < pelvis.length; index += 1) {
     const bone = pelvis[index];
     if (bone === undefined) throw new Error("The pelvis catalogue was incomplete.");
     toolPayload(await page.evaluate(
-      ({ questionNumber, answer }) => window.__anatomyAcceptance.invoke("anatomy_answer_set", { questionNumber, answer }),
+      ({ questionNumber, answer }) => window.__anatomyAcceptance.invoke("anatomy_test", { action: "answer", questionNumber, answer }),
       { questionNumber: index + 1, answer: bone.name },
     ));
   }
   const scoreMeasurement = await page.evaluate(async () => {
     const startedAt = performance.now();
-    const result = await window.__anatomyAcceptance.invoke("anatomy_test_submit", {});
+    const result = await window.__anatomyAcceptance.invoke("anatomy_test", { action: "submit" });
     return { durationMs: performance.now() - startedAt, result };
   });
   const score = toolPayload(scoreMeasurement.result);

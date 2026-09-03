@@ -9,14 +9,9 @@ export const EXPECTED_SEMANTIC_MESHES = 208;
 export const ANATOMY_TEMPLATE = "anatomy-exam-prep";
 
 export const EXPECTED_ANATOMY_TOOLS = [
-  "anatomy_answer_set",
-  "anatomy_bone_focus",
-  "anatomy_camera_set",
   "anatomy_context_read",
-  "anatomy_mode_set",
-  "anatomy_section_set",
-  "anatomy_session_set",
-  "anatomy_test_submit",
+  "anatomy_navigate",
+  "anatomy_test",
 ] as const;
 
 type JsonRecord = Readonly<Record<string, unknown>>;
