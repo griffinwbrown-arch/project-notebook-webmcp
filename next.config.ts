@@ -1,5 +1,11 @@
 import type { NextConfig } from "next";
 
+// React's development build uses eval() for debugging features (e.g.
+// reconstructing call stacks). It never uses eval() in production, so we
+// relax script-src with 'unsafe-eval' in development only and keep the
+// production CSP strict.
+const isDevelopment = process.env.NODE_ENV === "development";
+
 const nextConfig: NextConfig = {
   async headers() {
     return [{
@@ -16,7 +22,7 @@ const nextConfig: NextConfig = {
             "frame-ancestors 'none'",
             "img-src 'self' data:",
             "object-src 'none'",
-            "script-src 'self' 'unsafe-inline'",
+            `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ""}`,
             "style-src 'self' 'unsafe-inline'",
             "worker-src 'none'",
           ].join("; "),
