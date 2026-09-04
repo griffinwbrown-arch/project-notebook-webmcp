@@ -116,7 +116,7 @@ const TOOL_DESCRIPTORS = [
   },
   {
     name: "anatomy_navigate",
-    description: "Navigate the atlas in one call. Prefer one set_view call for setup: infer layout, mode, section, camera, and isolation from the user's request instead of issuing separate setup calls. Combining mode \"test\" with a section starts a fresh test; isolate false keeps the full model visible. Use focus for a verified source-mesh bone in Study mode or an opaque question number in Test mode. Section schema titles match the labels on the page.",
+    description: "Navigate the atlas in one call. Prefer one set_view call for setup: infer layout, mode, section, camera, and isolation from the user's request instead of issuing separate setup calls. Combining mode \"test\" with a section starts a fresh test; isolate false keeps the surrounding anatomy visible. In Test mode, after recording each answer, focus the next question with isolate false. This matches selecting that answer field: it targets the numbered bone and moves the camera there without hiding the rest of the model. Do not reset the camera between questions. Section schema titles match the labels on the page.",
     inputSchema: {
       oneOf: [
         {
