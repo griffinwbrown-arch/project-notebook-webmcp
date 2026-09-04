@@ -364,6 +364,8 @@ function AgentNotebookViewer({ notebook, registry, state, onAction, agentSession
                             props={component.props}
                             disabled={busy}
                             webMcpEnabled={true}
+                            layout={state.requestedLayout}
+                            onLayoutChange={(layout) => onAction({ type: "layout-selected", layout })}
                             onSubmit={async (section: AnatomySection, answers: Readonly<Record<string, string>>) => executeIntrinsicAction("page_anatomy_quiz_submit", {
                               mutationId: mutationId("anatomy-quiz"),
                               pageId: page.id,

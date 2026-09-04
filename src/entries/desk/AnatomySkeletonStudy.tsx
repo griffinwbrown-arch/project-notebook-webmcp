@@ -22,6 +22,7 @@ import {
 import type { WebMcpModelContext, WebMcpTool } from "../../types/webmcp";
 
 type StudyMode = "study" | "test";
+type NotebookLayout = "single" | "spread";
 type AtlasState = "loading" | "ready" | "unavailable";
 type CameraSnapshot = ReturnType<AnatomyAtlasScene["getCamera"]>;
 type AtlasIdentity = ReturnType<AnatomyAtlasScene["getIdentity"]>;
@@ -72,6 +73,8 @@ type AnatomyControllerActions = Readonly<{
   setMode: (mode: StudyMode) => Readonly<Record<string, unknown>>;
   setSection: (section: AnatomySection) => Readonly<Record<string, unknown>>;
   setSession: (input: Readonly<{ mode: StudyMode; section: AnatomySection }>) => Readonly<Record<string, unknown>>;
+  setLayout: (layout: NotebookLayout) => void;
+  setIsolation: (isolate: boolean) => void;
   focusStudyBone: (boneId: string, isolate: boolean | undefined) => Readonly<Record<string, unknown>> | null;
   focusTestQuestion: (questionNumber: number, isolate: boolean | undefined) => Readonly<Record<string, unknown>> | null;
   setAnswer: (questionNumber: number, answer: string) => Readonly<Record<string, unknown>> | null;
@@ -113,7 +116,7 @@ const TOOL_DESCRIPTORS = [
   },
   {
     name: "anatomy_navigate",
-    description: "Navigate the atlas in one call. Use action \"set_view\" to change any of mode (study/test), section, and camera together; use action \"focus\" to focus a verified source-mesh bone in Study mode, or an opaque question number while test answers are hidden. Isolation is optional. Section schema titles match the labels on the page.",
+    description: "Navigate the atlas in one call. Prefer one set_view call for setup: infer layout, mode, section, camera, and isolation from the user's request instead of issuing separate setup calls. Combining mode \"test\" with a section starts a fresh test; isolate false keeps the full model visible. Use focus for a verified source-mesh bone in Study mode or an opaque question number in Test mode. Section schema titles match the labels on the page.",
     inputSchema: {
       oneOf: [
         {
@@ -123,9 +126,17 @@ const TOOL_DESCRIPTORS = [
             mode: { type: "string", enum: ["study", "test"] },
             section: SECTION_SCHEMA,
             camera: { type: "string", enum: ["anterior", "left", "right"] },
+            layout: { type: "string", enum: ["single", "spread"] },
+            isolate: { type: "boolean" },
           },
           required: ["action"],
-          anyOf: [{ required: ["mode"] }, { required: ["section"] }, { required: ["camera"] }],
+          anyOf: [
+            { required: ["mode"] },
+            { required: ["section"] },
+            { required: ["camera"] },
+            { required: ["layout"] },
+            { required: ["isolate"] },
+          ],
           additionalProperties: false,
         },
         {
@@ -233,26 +244,29 @@ function executeAnatomyTool(
   if (command === "anatomy_navigate") {
     if (!isRecord(input)) return invalidToolInput(command);
     if (input.action === "set_view") {
-      if (!hasExactKeys(input, ["action", "mode", "section", "camera"], ["action"])) return invalidToolInput(command);
+      if (!hasExactKeys(input, ["action", "mode", "section", "camera", "layout", "isolate"], ["action"])) return invalidToolInput(command);
       const modeGiven = input.mode !== undefined;
       const sectionGiven = input.section !== undefined;
       const cameraGiven = input.camera !== undefined;
-      if (!modeGiven && !sectionGiven && !cameraGiven) return invalidToolInput(command);
+      const layoutGiven = input.layout !== undefined;
+      const isolationGiven = input.isolate !== undefined;
+      if (!modeGiven && !sectionGiven && !cameraGiven && !layoutGiven && !isolationGiven) return invalidToolInput(command);
       if (modeGiven && !isStudyMode(input.mode)) return invalidToolInput(command);
       if (sectionGiven && !isAnatomySection(input.section)) return invalidToolInput(command);
       if (cameraGiven && !isCameraPreset(input.camera)) return invalidToolInput(command);
-      let result: Readonly<Record<string, unknown>> = {};
+      if (layoutGiven && input.layout !== "single" && input.layout !== "spread") return invalidToolInput(command);
+      if (isolationGiven && typeof input.isolate !== "boolean") return invalidToolInput(command);
       if (modeGiven && isStudyMode(input.mode) && sectionGiven && isAnatomySection(input.section)) {
-        result = actions.setSession({ mode: input.mode, section: input.section });
+        actions.setSession({ mode: input.mode, section: input.section });
       } else if (modeGiven && isStudyMode(input.mode)) {
-        result = actions.setMode(input.mode);
+        actions.setMode(input.mode);
       } else if (sectionGiven && isAnatomySection(input.section)) {
-        result = actions.setSection(input.section);
+        actions.setSection(input.section);
       }
-      if (cameraGiven && isCameraPreset(input.camera)) {
-        result = { ...result, camera: actions.setCamera(input.camera) };
-      }
-      return result;
+      if (layoutGiven && (input.layout === "single" || input.layout === "spread")) actions.setLayout(input.layout);
+      if (cameraGiven && isCameraPreset(input.camera)) actions.setCamera(input.camera);
+      if (isolationGiven && typeof input.isolate === "boolean") actions.setIsolation(input.isolate);
+      return actions.context();
     }
     if (input.action === "focus") {
       if (actions.context().mode === "test") {
@@ -518,6 +532,8 @@ export type AnatomySkeletonStudyProps = Readonly<{
   props: AnatomySkeletonProps;
   disabled?: boolean;
   webMcpEnabled?: boolean;
+  layout?: NotebookLayout;
+  onLayoutChange?: (layout: NotebookLayout) => void;
   onSubmit: (section: AnatomySection, answers: Readonly<Record<string, string>>) => Promise<boolean> | boolean;
 }>;
 
@@ -525,6 +541,8 @@ export function AnatomySkeletonStudy({
   props,
   disabled = false,
   webMcpEnabled = true,
+  layout = "single",
+  onLayoutChange,
   onSubmit,
 }: AnatomySkeletonStudyProps): React.JSX.Element {
   const initialBone = firstBone("thorax");
@@ -542,6 +560,8 @@ export function AnatomySkeletonStudy({
   const atlasStateRef = useRef<AtlasState>("loading");
   const cameraRef = useRef<CameraSnapshot>(INITIAL_CAMERA);
   const onSubmitRef = useRef(onSubmit);
+  const layoutRef = useRef<NotebookLayout>(layout);
+  const onLayoutChangeRef = useRef(onLayoutChange);
   const submissionGenerationRef = useRef(0);
   const controllerRef = useRef<AnatomyController>({ active: true, actions: null });
 
@@ -565,6 +585,11 @@ export function AnatomySkeletonStudy({
   useEffect(() => {
     onSubmitRef.current = onSubmit;
   }, [onSubmit]);
+
+  useEffect(() => {
+    layoutRef.current = layout;
+    onLayoutChangeRef.current = onLayoutChange;
+  }, [layout, onLayoutChange]);
 
   const replaceAttempt = useCallback((next: TestAttempt): void => {
     attemptRef.current = next;
@@ -785,6 +810,7 @@ export function AnatomySkeletonStudy({
     const base = {
       mode: currentMode,
       section: currentSection,
+      layout: layoutRef.current,
       logicalBoneCount: identity?.logicalBoneCount ?? props.logicalBoneCount,
       semanticMeshNodeCount: identity?.semanticMeshCount ?? props.semanticMeshCount,
       visibleSemanticMeshCount,
@@ -846,6 +872,13 @@ export function AnatomySkeletonStudy({
         selectBone(firstBone(nextSection), true, false);
         return contextSnapshot();
       },
+      setLayout: (nextLayout) => {
+        layoutRef.current = nextLayout;
+        onLayoutChangeRef.current?.(nextLayout);
+      },
+      setIsolation: (nextIsolated) => {
+        applyIsolation(nextIsolated ? selectedBoneIdRef.current : null);
+      },
       focusStudyBone,
       focusTestQuestion,
       setAnswer: setTestAnswer,
@@ -855,6 +888,7 @@ export function AnatomySkeletonStudy({
     };
   }, [
     contextSnapshot,
+    applyIsolation,
     focusStudyBone,
     focusTestQuestion,
     replaceMode,
